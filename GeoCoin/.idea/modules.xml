@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/GeoCoin.iml" filepath="$PROJECT_DIR$/GeoCoin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/geocoin/geocoin.iml" filepath="$PROJECT_DIR$/geocoin/geocoin.iml" />
+    </modules>
+  </component>
+</project>
+
