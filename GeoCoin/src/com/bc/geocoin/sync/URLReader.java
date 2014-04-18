@@ -7,7 +7,7 @@ import java.util.Map;
 
 import org.json.*;
 
-public class URLReader {
+public class URLReader implements IUrlReader{
     
 	// put in config? 
 	// coinmap.org url
@@ -31,7 +31,7 @@ public class URLReader {
 		locationMap = new HashMap<String, Object>();	
 	}
 	
-	public Map<String, Object> pullDataFromURL(){
+	public Map<String, Object> PullDataFromUrl(){
         BufferedReader in;
 		try {
 			in = new BufferedReader(
