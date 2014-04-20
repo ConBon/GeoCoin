@@ -1,6 +1,7 @@
 package com.bc.geocoin.db;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 
@@ -15,7 +16,7 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DbManager extends Service implements IDbManager{
+public class DbManager implements IDbManager{
 
 	private final String TAG = "GeoCoin";
 	private final String dbname = "geocoin_db";
@@ -26,22 +27,19 @@ public class DbManager extends Service implements IDbManager{
 	private Calendar calendar;
 	private String timestamp;
 	private Document document;
-	private URLReader urlReader;
 	private String docId;
+	private Context context;
 	
-	@Override
-	public IBinder onBind(Intent intent) {
-				 
-		 Log.d(TAG, "Begin Geocoin db service");
-		 	
-		return null;//new Intent(action, uri);
+	public DbManager(Context context){
+		this.context = context;
+		//initialise docContent
+		 docContent = new HashMap<String, Object>();
 	}
 
-
 	@Override
-	public void GetManager() {
+	public void getManager() {
 		 try {
-		     manager = new Manager(getApplicationContext().getFilesDir(), Manager.DEFAULT_OPTIONS);
+		     manager = new Manager(context.getFilesDir(), Manager.DEFAULT_OPTIONS);
 		 } catch (IOException e) {
 		     Log.e(TAG, "Cannot create manager object");
 		     return;
@@ -49,32 +47,36 @@ public class DbManager extends Service implements IDbManager{
 	}
 
 	@Override
-	public void GetDb() {
+	public boolean createDb() {
+		
+		 getManager();
 		 // create a name for the database and make sure the name is legal	 
 		 if (!Manager.isValidDatabaseName(dbname)) {
 		     Log.e(TAG, "Unacceptable database name");
-		     return;
+		     return false;
 		 }
-
+		
 		 // create a new database		 
 		 try {
 		     database = manager.getDatabase(dbname);
 		 } catch (CouchbaseLiteException e) {
 		     Log.e(TAG, "Cannot retrieve database");
-		     return;
+		     return false;
 		 }	
+		 return true;
 	}
 
 	@Override
-	public void GetTimestamp() {
-		 dateFormatter = new SimpleDateFormat("yyyy-MM-dd’T'HH:mm:ss.SSS'Z'");
+	public void getTimestamp() {
+		 dateFormatter = new SimpleDateFormat("yyyy-MM-dd''HH:mm:ss.SSS'Z'");
 		 calendar = GregorianCalendar.getInstance();
 		 timestamp = dateFormatter.format(calendar.getTime());		
 	}
 
 	@Override
-	public void CreateDocument() {
-		 docContent.put("message", "Hello Couchbase Lite");
+	public void addDocumentContent(String key, String value) {
+		 docContent.put(key, value);
+		 getTimestamp();
 		 docContent.put("creationDate", timestamp);
 
 		 // display the data for the new document
@@ -82,7 +84,7 @@ public class DbManager extends Service implements IDbManager{
 	}
 
 	@Override
-	public String PersistDocument() {
+	public String persistDocument() {
 		 // create an empty document
 		 document = database.createDocument();
 
@@ -95,11 +97,14 @@ public class DbManager extends Service implements IDbManager{
 
 		// save the ID of the new document
 		docId = document.getId();
+		
+		//clear variable
+		docContent.clear();
 		return docId;
 	}
 
 	@Override
-	public Document GetDocument(String docId) {
+	public Document getDocument(String docId) {
 		// retrieve the document from the database
 		Document retrievedDocument = database.getDocument(docId);
 

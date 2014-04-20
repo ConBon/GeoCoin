@@ -1,5 +1,8 @@
 package com.bc.geocoin;
 
+import java.util.Map;
+import java.util.Set;
+
 import shared.ui.actionscontentview.ActionsContentView;
 
 import com.bc.geocoin.db.*;
@@ -7,45 +10,49 @@ import com.bc.geocoin.sync.*;
 import com.bc.geocoin.fragments.*;
 import com.bc.geocoin.R;
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.view.LayoutInflater;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.os.Build;
 
 public class MainActivity extends ActionBarActivity {
 
+	private final String PREFS_NAME = "MyPrefsFile";
+	private SharedPreferences settings;
 	private ActionsContentView viewActionsContentView;
 	private GoogleMap map;
 	private IDbManager dbManager;
-	private IUrlReader urlReader;
+	private BroadcastReceiver dataReceiver;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        settings = getSharedPreferences(PREFS_NAME, 0);
               
         viewActionsContentView = (ActionsContentView) findViewById(R.id.actionsContentView);
         
         final ListView viewActionsList = (ListView) findViewById(R.id.actions);
         
-        final String[] values = new String[] { "Home", "About", "Settings" };
+        final String[] values = new String[] { "Refresh", "Settings", "About" };
         final ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-            android.R.layout.simple_list_item_1, android.R.id.text1, values);
+            android.R.layout.simple_list_item_2, android.R.id.text1, values);
         
         viewActionsList.setAdapter(adapter);
         viewActionsList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -59,21 +66,94 @@ public class MainActivity extends ActionBarActivity {
         //if (savedInstanceState == null) {
         	showFragment(0);
         //}
+        	
+        setUpDb();	
         
+        /**
+         * Receiver for DataPullerService
+         */
+        dataReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+            	Bundle bundle = intent.getExtras();
+            	if (bundle != null) {
+            		Set<String> keySet = bundle.keySet();
+            		double lat = 0;
+            		double lng = 0;
+            		String title = "";
+            		int count = 0;
+            		for(String key : keySet){            			
+            			dbManager.addDocumentContent(key, bundle.getString(key));
+            			switch(key){
+            			case "lat":
+            				lat = Double.parseDouble(bundle.getString(key));
+            				break;
+            			case "lon":
+            				lng = Double.parseDouble(bundle.getString(key));
+            				break;
+            			case "title":
+            				title = bundle.getString(key);
+            				break;
+            			}     			
+            		}
+            		
+            		dbManager.persistDocument();
+            		
+            		//setUpMap(lat, lng, title);
+            	} 
+            	
+            }
+        };
+        
+        syncFirstTime();   
     }
     
-    private void showFragment(int position) {
+	/**
+	 * Setup new or retrieve existing db
+	 */
+    private void setUpDb() {
+    	dbManager = new DbManager(this.getBaseContext());
+    	dbManager.createDb();
+	}
+    
+    /**
+     * Sync bitcoin locations and save to db on first run
+     */
+    private void syncFirstTime() {
+		if(settings.getBoolean("first_time_open", true)){
+			Log.d("MainActivity", "First time application run");
+			settings.edit().putBoolean("first_time_open", false).commit();
+				
+			sync();
+		}
+	}
+
+    /**
+     * Start service to pull data from url in background
+     */
+    private void sync(){
+    	Intent intent = new Intent(this, DataPullerService.class);
+		startService(intent);
+    }
+    
+    /**
+     * Show fragment based on click result of actioncontentview menu
+     * @param position
+     */
+	private void showFragment(int position) {
         final Fragment f;
         switch (position) {
         case 0:
-          setUpMapIfNeeded();
-          return;
+        	sync();
+        	return;
         case 1:
-          f = new AboutFragment();
-          break;
+        	f = new SettingsFragment();
+        	break;
         case 2:
-          f = new SettingsFragment();
-          break;
+        	f = new AboutFragment();
+        	break;
+        case 3:
+        	
 
         default:
           return;
@@ -83,6 +163,10 @@ public class MainActivity extends ActionBarActivity {
         viewActionsContentView.showContent();
       }
 
+	
+	/**
+	 * Setup map fragment
+	 */
     private void setUpMapIfNeeded() {
         // Do a null check to confirm that we have not already instantiated the map.
         if (map == null) {
@@ -90,27 +174,24 @@ public class MainActivity extends ActionBarActivity {
             map = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
             // Check if we were successful in obtaining the map.
             if (map != null) {
-                setUpMap();
+                //setUpMap();
             }
         }
-        viewActionsContentView.showContent();
     }
     
     /**
-     * This is where we can add markers or lines, add listeners or move the camera. In this case, we
-     * just add a marker near Africa.
-     * <p>
-     * This should only be called once and when we are sure that {@link #mMap} is not null.
+     * This is where we can add markers or lines, add listeners or move the camera. 
      */
-    private void setUpMap() {
-        map.addMarker(new MarkerOptions().position(new LatLng(0, 0)).title("Marker"));
-       
+    private void setUpMap(double lat, double lng, String title) {
+    	
+        map.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title(title));
+        Log.d("MainActivity", "Adding marker '"+title+"' to map at lat: "+lat+" long: "+lng);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {       
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
+        //getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
@@ -119,24 +200,23 @@ public class MainActivity extends ActionBarActivity {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+       /* int id = item.getItemId();
         switch(id){
-        case R.id.action_about:
-        	showFragment(1);
-        case R.id.action_settings:
-        	showFragment(2);
-        	break;
-        case R.id.action_refresh:
-        	
-        	break;
-        }
+		}*/
         return super.onOptionsItemSelected(item);
+    }
+    
+    @Override
+    protected void onPause() {
+      super.onPause();
+      unregisterReceiver(dataReceiver);
     }
     
     @Override
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
+        registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
     }
 
 }

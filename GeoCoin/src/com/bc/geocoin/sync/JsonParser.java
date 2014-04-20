@@ -1,9 +1,14 @@
 package com.bc.geocoin.sync;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.json.*;
+
+import com.google.gson.GsonBuilder;
 
 public class JsonParser {
 	int one;
@@ -21,7 +26,7 @@ public class JsonParser {
 		return jsonObject;
 	}
 	
-	public Map<String, Object> parse(String jsonString){
+	public Map<String, Object> parseJSON(String jsonString){
 		try {
 			jsonArray = new JSONArray(jsonString);
 		} catch (JSONException e) {
@@ -34,5 +39,24 @@ public class JsonParser {
 		}
 			
 		return map;
+	}
+	
+	/**
+	 *  Parse single record from json to map at bottom level
+	 * @param obj
+	 * @return
+	 */
+	public Map<String, ?> parseRecord(Object obj){		
+		GsonBuilder builder = new GsonBuilder();
+		Map<String, ?> gsonMap;
+		for(Entry<String, Object> result : map.entrySet()){
+		    String str = result.getValue().toString();
+			gsonMap = (Map<String, ?>) builder.create().fromJson(str, Object.class);
+			return gsonMap;
+		}	
+		//default instansiation of map
+		//should not reach this
+		gsonMap = new HashMap<String, String>();
+		return gsonMap;
 	}
 }
