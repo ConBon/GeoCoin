@@ -19,7 +19,7 @@ import java.util.Map;
 public class DbManager implements IDbManager{
 
 	private final String TAG = "GeoCoin";
-	private final String dbname = "geocoin_db";
+	private final String dbname = "geocoindb";
 	private Manager manager;
 	private Database database;
 	private Map<String, Object> docContent;
@@ -74,7 +74,7 @@ public class DbManager implements IDbManager{
 	}
 
 	@Override
-	public void addDocumentContent(String key, String value) {
+	public void addDocumentContent(String key, Object value) {
 		 docContent.put(key, value);
 		 getTimestamp();
 		 docContent.put("creationDate", timestamp);
@@ -97,7 +97,7 @@ public class DbManager implements IDbManager{
 
 		// save the ID of the new document
 		docId = document.getId();
-		
+		Log.d("DbManager", "document saved with id: "+ docId);
 		//clear variable
 		docContent.clear();
 		return docId;

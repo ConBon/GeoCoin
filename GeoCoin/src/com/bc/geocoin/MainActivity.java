@@ -1,5 +1,9 @@
 package com.bc.geocoin;
 
+import java.io.IOException;
+import java.net.URL;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -7,6 +11,7 @@ import shared.ui.actionscontentview.ActionsContentView;
 
 import com.bc.geocoin.db.*;
 import com.bc.geocoin.sync.*;
+import com.bc.geocoin.util.ZipUtil;
 import com.bc.geocoin.fragments.*;
 import com.bc.geocoin.R;
 import com.google.android.gms.maps.GoogleMap;
@@ -38,11 +43,23 @@ public class MainActivity extends ActionBarActivity {
 	private GoogleMap map;
 	private IDbManager dbManager;
 	private BroadcastReceiver dataReceiver;
+	private JsonParser jsonParser;
+	private Map<String, Object> locationMap;
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        Thread.currentThread().setContextClassLoader(new ClassLoader() {
+            @Override
+            public Enumeration<URL> getResources(String resName) throws IOException {
+                Log.i("Debug", "Stack trace of who uses " +
+                        "Thread.currentThread().getContextClassLoader()." +
+                        "getResources(String resName):", new Exception());
+                return super.getResources(resName);
+            }
+        });
         
         settings = getSharedPreferences(PREFS_NAME, 0);
               
@@ -75,37 +92,52 @@ public class MainActivity extends ActionBarActivity {
         dataReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-            	Bundle bundle = intent.getExtras();
-            	if (bundle != null) {
-            		Set<String> keySet = bundle.keySet();
-            		double lat = 0;
-            		double lng = 0;
-            		String title = "";
-            		int count = 0;
-            		for(String key : keySet){            			
-            			dbManager.addDocumentContent(key, bundle.getString(key));
-            			switch(key){
-            			case "lat":
-            				lat = Double.parseDouble(bundle.getString(key));
-            				break;
-            			case "lon":
-            				lng = Double.parseDouble(bundle.getString(key));
-            				break;
-            			case "title":
-            				title = bundle.getString(key);
-            				break;
-            			}     			
-            		}
-            		
-            		dbManager.persistDocument();
-            		
-            		//setUpMap(lat, lng, title);
-            	} 
             	
+            	Bundle bundle = intent.getExtras();    
+            	if(bundle != null){
+            		try {
+						splitJson(ZipUtil.decompress((byte[])bundle.get("json")));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}            		
+            	}
             }
         };
         
         syncFirstTime();   
+    }
+    
+    /**
+     * Call JsonParser to split string from url
+     * @param json
+     */
+    public void splitJson(final String json){
+    	jsonParser = new JsonParser();
+    	 
+    	new Thread(new Runnable() {
+    	    public void run() {
+    	    	locationMap = jsonParser.parseJSON(json);
+    	    	
+    	    	for(Map.Entry<String, Object> entry : locationMap.entrySet()){
+    				Log.d("args", entry.toString());
+    				Log.d("LOCATIONMAP", locationMap.toString());
+    				
+    				
+    				// convert object to map construct
+    				Map<String, ?> newMap = jsonParser.parseRecord(entry.getValue());
+    				
+    				for(Map.Entry<String, ?> property : newMap.entrySet()){
+    					Log.d("Main Activity", "Key: " +property.getKey().toString()+" & Value: "+ property.getValue().toString());
+    					
+    					//dbManager.addDocumentContent(property.getKey(), property.getValue());
+    					//dbManager.persistDocument();
+    				}
+    	    	}
+    	    }	
+   
+    	 }).start();
+    	
+    	
     }
     
 	/**
@@ -145,6 +177,7 @@ public class MainActivity extends ActionBarActivity {
         switch (position) {
         case 0:
         	sync();
+        	//viewActionsContentView.showContent();
         	return;
         case 1:
         	f = new SettingsFragment();
@@ -216,7 +249,7 @@ public class MainActivity extends ActionBarActivity {
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
-        registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
+        //registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
     }
 
 }

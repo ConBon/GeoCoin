@@ -48,15 +48,12 @@ public class JsonParser {
 	 */
 	public Map<String, ?> parseRecord(Object obj){		
 		GsonBuilder builder = new GsonBuilder();
-		Map<String, ?> gsonMap;
+		Map<String, ?> gsonMap = new HashMap<String, String>();
 		for(Entry<String, Object> result : map.entrySet()){
 		    String str = result.getValue().toString();
 			gsonMap = (Map<String, ?>) builder.create().fromJson(str, Object.class);
 			return gsonMap;
 		}	
-		//default instansiation of map
-		//should not reach this
-		gsonMap = new HashMap<String, String>();
 		return gsonMap;
 	}
 }

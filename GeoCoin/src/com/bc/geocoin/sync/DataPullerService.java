@@ -8,6 +8,8 @@ import java.util.Map.Entry;
 
 import org.json.*;
 
+import com.bc.geocoin.util.ZipUtil;
+
 import android.app.IntentService;
 import android.app.Service;
 import android.content.Intent;
@@ -23,8 +25,7 @@ public class DataPullerService extends IntentService{
 	private URL url;
 	private String inputLine;
     private String json;
-    private JsonParser jsonParser;
-    private Map<String, Object> locationMap;
+    
     public static final String ACTION = "com.bc.geocoin";
 	
     public DataPullerService(){
@@ -39,10 +40,6 @@ public class DataPullerService extends IntentService{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		jsonParser = new JsonParser();
-		locationMap = new HashMap<String, Object>();
-		
 		pullDataFromUrl();
 	}
     
@@ -67,26 +64,27 @@ public class DataPullerService extends IntentService{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-        locationMap = jsonParser.parseJSON(json);   
-        
-        sendBackServiceResult(locationMap);
+     
+        sendBackServiceResult(json);
 	}
 
-	private void sendBackServiceResult(Map<String, Object> value) {
-		for(Entry<String, Object> entry : value.entrySet()){
-			Intent intent = new Intent(ACTION);
-			//Log.d("DataPullerService", "initial entry: "+entry.getValue().toString());
-			// convert object to map construct
-			Map<String, ?> newMap = jsonParser.parseRecord(entry.getValue());
-			
-			for(Entry<String, ?> property : newMap.entrySet()){
-				intent.putExtra(property.getKey().toString(), property.getValue().toString());
-				Log.d("DataPullerService", "Intent- Key: " +property.getKey().toString()+" & Value: "+ property.getValue().toString());
-			}
+	/**
+	 * Send broadcast back to main activity
+	 * @param value
+	 */
+	private void sendBackServiceResult(String value) {	
+		// compress string for sending 
+		try {
+			byte[] compressedValue = ZipUtil.compress(value);
+			Intent intent = new Intent(ACTION);	
+			intent.putExtra("json", compressedValue);
+			Log.d("DataPullerService", "Sending compressed data back to main activity");
 			sendBroadcast(intent);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		
 	}
-	
 }
+	
+
