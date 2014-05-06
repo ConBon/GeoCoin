@@ -27,10 +27,15 @@ public class GeofenceStore {
 	public static final String KEY_LATITUDE = "com.example.android.geofence.KEY_LATITUDE";
 	public static final String KEY_LONGITUDE = "com.example.android.geofence.KEY_LONGITUDE";
 	public static final String KEY_RADIUS = "com.example.android.geofence.KEY_RADIUS";
-	public static final String KEY_NAME = "com.example.android.geofence.KEY_NAME";
-	public static final String KEY_ADDRESS = "com.example.android.geofence.KEY_ADDRESS";
 	public static final String KEY_EXPIRATION_DURATION = "com.example.android.geofence.KEY_EXPIRATION_DURATION";
 	public static final String KEY_TRANSITION_TYPE = "com.example.android.geofence.KEY_TRANSITION_TYPE";
+	public static final String KEY_NAME = "com.example.android.geofence.KEY_NAME";
+	public static final String KEY_CITY = "com.example.android.geofence.KEY_CITY";
+	public static final String KEY_ADDRESS = "com.example.android.geofence.KEY_ADDRESS";
+	public static final String KEY_WEB = "com.example.android.geofence.KEY_WEB";
+	public static final String KEY_PHONE = "com.example.android.geofence.KEY_PHONE";
+	public static final String KEY_ICON = "com.example.android.geofence.KEY_ICON";
+
 	// The prefix for flattened geofence keys
 	public static final String KEY_PREFIX = "com.example.android.geofence.KEY";
 
@@ -38,7 +43,7 @@ public class GeofenceStore {
 	/*
 	 * Couchbase db variables
 	 */
-	private final String dbname = "geocoindb";
+	private final String DB_NAME = "geocoindb";
 	private Manager manager;
 	private Database database;
 	private Map<String, Object> docContent;
@@ -48,13 +53,6 @@ public class GeofenceStore {
 	private Document document;
 	private String docId;
 	private Context context;
-
-	/*
-	 * Invalid values, used to test geofence storage when retrieving geofences
-	 */
-	public static final long INVALID_LONG_VALUE = -999l;
-	public static final float INVALID_FLOAT_VALUE = -999.0f;
-	public static final int INVALID_INT_VALUE = -999;
 
 	// Create the SharedPreferences storage
 	public GeofenceStore(Context context) {
@@ -72,14 +70,14 @@ public class GeofenceStore {
 		}
 		
 		// create a name for the database and make sure the name is legal
-		if (!Manager.isValidDatabaseName(dbname)) {
+		if (!Manager.isValidDatabaseName(DB_NAME)) {
 			Log.e(TAG, "Unacceptable database name");
 			return false;
 		}
 
 		// create a new database
 		try {
-			database = manager.getDatabase(dbname);
+			database = manager.getDatabase(DB_NAME);
 		} catch (CouchbaseLiteException e) {
 			Log.e(TAG, "Cannot retrieve database");
 			return false;
@@ -111,21 +109,29 @@ public class GeofenceStore {
 				(double) properties.get(KEY_LONGITUDE) : null;
 		float radius = (!properties.get(KEY_RADIUS).equals(null)) ?
 				(float) properties.get(KEY_RADIUS) : null;
-		String name = (!properties.get(KEY_NAME).equals(null)) ?
-				(String) properties.get(KEY_NAME) : null;
-		String address = (!properties.get(KEY_ADDRESS).equals(null)) ?
-				(String) properties.get(KEY_ADDRESS) : null;
 		long expirationDuration = (!properties.get(KEY_EXPIRATION_DURATION).equals(null)) ?
 				(long) properties.get(KEY_EXPIRATION_DURATION) : null;
 		int transitionType = (!properties.get(KEY_TRANSITION_TYPE).equals(null)) ?
 				(int) properties.get(KEY_TRANSITION_TYPE) : null;
+		String name = (!properties.get(KEY_NAME).equals(null)) ?
+				(String) properties.get(KEY_NAME) : null;
+		String city = (!properties.get(KEY_CITY).equals(null)) ?
+				(String) properties.get(KEY_CITY) : null;
+		String address = (!properties.get(KEY_ADDRESS).equals(null)) ?
+				(String) properties.get(KEY_ADDRESS) : null;
+		String web = (!properties.get(KEY_WEB).equals(null)) ?
+				(String) properties.get(KEY_WEB) : null;
+		String phone = (!properties.get(KEY_PHONE).equals(null)) ?
+				(String) properties.get(KEY_PHONE) : null;
+		String icon = (!properties.get(KEY_ICON).equals(null)) ?
+				(String) properties.get(KEY_ICON) : null;
 
 		// display the retrieved document
 		Log.d(TAG, "retrievedDocument="
 						+ String.valueOf(retrievedDocument.getProperties()));
 		// Return a true Geofence object
-		return new BitCoinGeofence(id, lat, lng, radius, name, address,
-				expirationDuration, transitionType);
+		return new BitCoinGeofence(id, lat, lng, radius,expirationDuration, 
+				transitionType, name, city, address, web, phone, icon);
 	}
 
 	/**
@@ -141,12 +147,16 @@ public class GeofenceStore {
 		docContent.put(KEY_LATITUDE, (float) geofence.getLatitude());
 		docContent.put(KEY_LONGITUDE, (float) geofence.getLongitude());
 		docContent.put(KEY_RADIUS, geofence.getRadius());
-		docContent.put(KEY_NAME, geofence.getName());
-		docContent.put(KEY_ADDRESS, geofence.getAddress());
 		docContent.put(KEY_EXPIRATION_DURATION,
 				geofence.getExpirationDuration());
 		docContent.put(KEY_TRANSITION_TYPE, geofence.getTransitionType());
-		
+		docContent.put(KEY_NAME, geofence.getName());
+		docContent.put(KEY_CITY, geofence.getCity());
+		docContent.put(KEY_ADDRESS, geofence.getAddress());
+		docContent.put(KEY_WEB, geofence.getWeb());
+		docContent.put(KEY_PHONE, geofence.getPhone());
+		docContent.put(KEY_ICON, geofence.getIcon());
+
 		getTimestamp();
 		docContent.put("creationDate", timestamp);
 
@@ -177,7 +187,7 @@ public class GeofenceStore {
 		try {
 			database.deleteLocalDocument(id);
 		} catch (CouchbaseLiteException e) {
-			Log.d(TAG, "Error occurred deleting item from database");
+			Log.d(TAG, "Error occurred deleting item with id "+id+" from database");
 			e.printStackTrace();
 		}
 	}

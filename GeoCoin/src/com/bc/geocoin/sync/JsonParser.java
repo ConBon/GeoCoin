@@ -46,12 +46,12 @@ public class JsonParser {
 	 * @param obj
 	 * @return
 	 */
-	public Map<String, ?> parseRecord(Object obj){		
+	public Map<String, Object> parseRecord(Object obj){		
 		GsonBuilder builder = new GsonBuilder();
-		Map<String, ?> gsonMap = new HashMap<String, String>();
+		Map<String, Object> gsonMap = new HashMap<String, Object>();
 		for(Entry<String, Object> result : map.entrySet()){
 		    String str = result.getValue().toString();
-			gsonMap = (Map<String, ?>) builder.create().fromJson(str, Object.class);
+			gsonMap = (Map<String, Object>) builder.create().fromJson(str, Object.class);
 			return gsonMap;
 		}	
 		return gsonMap;

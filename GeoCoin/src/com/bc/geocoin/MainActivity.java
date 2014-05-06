@@ -2,21 +2,24 @@ package com.bc.geocoin;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import shared.ui.actionscontentview.ActionsContentView;
 
-import com.bc.geocoin.db.*;
 import com.bc.geocoin.sync.*;
 import com.bc.geocoin.util.ZipUtil;
 import com.bc.geocoin.fragments.*;
+import com.bc.geocoin.geofence.BitCoinGeofence;
 import com.bc.geocoin.geofence.GeofenceStore;
 import com.bc.geocoin.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.location.Geofence;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -73,6 +76,11 @@ public class MainActivity extends ActionBarActivity {
 	private JsonParser jsonParser;
 	private Map<String, Object> locationMap;
 	
+	// Internal List of Geofence objects
+    List<Geofence> geofenceList;
+	// Persistent storage for geofences
+    private GeofenceStore geofenceStorage;
+	
     @Override
     protected void onPause() {
       super.onPause();
@@ -105,6 +113,10 @@ public class MainActivity extends ActionBarActivity {
         });*/
         
         settings = getSharedPreferences(PREFS_NAME, 0);
+        // Instantiate a new geofence storage area
+        geofenceStorage = new GeofenceStore(this);
+        // Instantiate the current List of geofences
+        geofenceList = new ArrayList<Geofence>();
               
         viewActionsContentView = (ActionsContentView) findViewById(R.id.actionsContentView);
         
@@ -134,8 +146,7 @@ public class MainActivity extends ActionBarActivity {
          */
         dataReceiver = new BroadcastReceiver() {
             @Override
-            public void onReceive(Context context, Intent intent) {
-            	
+            public void onReceive(Context context, Intent intent) {        	
             	Bundle bundle = intent.getExtras();    
             	if(bundle != null){
             		try {
@@ -145,8 +156,7 @@ public class MainActivity extends ActionBarActivity {
 					}            		
             	}
             }
-        };
-        
+        };        
         syncFirstTime();   
     }
     
@@ -171,14 +181,12 @@ public class MainActivity extends ActionBarActivity {
     				counter++;
     				
     				// convert object to map construct
-    				Map<String, ?> newMap = jsonParser.parseRecord(entry.getValue());
+    				Map<String, Object> newMap = jsonParser.parseRecord(entry.getValue());
     				
-    				for(Map.Entry<String, ?> property : newMap.entrySet()){
-    					Log.d("Main Activity", "Key: " +property.getKey().toString()+" & Value: "+ property.getValue().toString());
-    					
-    					//dbManager.addDocumentContent(property.getKey(), property.getValue());
-    					//dbManager.persistDocument();
-    				}
+    				createGeofence(newMap);
+					//dbManager.addDocumentContent(property.getKey(), property.getValue());
+					//dbManager.persistDocument();
+    				
     	    	}
     	    }	
    
@@ -214,6 +222,66 @@ public class MainActivity extends ActionBarActivity {
     }
     
     /**
+     * Get the geofence parameters for each geofence from the UI
+     * and add them to a List.
+     */
+    public void createGeofence(Map<String, Object> data) {
+        /*
+         * Create an internal object to store the data.
+         */
+    	String id ="";
+    	double lat = 0;
+    	double lon = 0;
+    	float radius = settings.getFloat("GEOFENCE_RADIUS", 1);
+    	String name ="";
+    	String city ="";
+    	String address ="";
+    	String web ="";
+    	String phone ="";
+    	String icon ="";
+    	
+    	for(Map.Entry<String, Object> property : data.entrySet()){
+    		switch(property.getKey()){
+    		case "id":
+    			id = (String) property.getValue();
+    			break;
+    		case "lat":
+    			lat = (Double) property.getValue();
+    			break;
+    		case "lon":
+    			lon = (Double) property.getValue();
+    			break;
+    		case "title": 
+    			name = (String) property.getValue();
+    			break;
+    		case "addr":
+    			address = (String) property.getValue();
+    			break;
+    		case "web":
+    			web = (String) property.getValue();
+    			break;
+    		case "phone":
+    			phone = (String) property.getValue();
+    			break;
+    		case "icon":
+    			icon = (String) property.getValue();
+    			break;
+    		default: break;
+    				
+    		}
+    	}
+    	BitCoinGeofence bcGeofence = new BitCoinGeofence(
+	            id, lat, lon, radius, 
+	            GEOFENCE_EXPIRATION_TIME,
+	            // This geofence records only entry transitions
+	            Geofence.GEOFENCE_TRANSITION_ENTER,
+	            name, city, address, web, phone, icon);
+	    // Store this flat version
+	    String docId = geofenceStorage.saveGeofence(bcGeofence);
+	    geofenceList.add(bcGeofence.toGeofence(docId));
+    }
+    
+    /**
      * Show fragment based on click result of actioncontentview menu
      * @param position
      */
@@ -240,7 +308,6 @@ public class MainActivity extends ActionBarActivity {
 
         viewActionsContentView.showContent();
       }
-
 	
 	/**
 	 * Setup map fragment
@@ -352,7 +419,8 @@ public class MainActivity extends ActionBarActivity {
         // Google Play services was not available for some reason
         } else {
             // Get the error code
-            /*int errorCode = connectionResult.getErrorCode();
+            int errorCode = ConnectionResult.yI.getErrorCode();
+            		//connectionResult.getErrorCode();
             // Get the error dialog from Google Play services
             Dialog errorDialog = GooglePlayServicesUtil.getErrorDialog(
                     errorCode,
@@ -370,9 +438,8 @@ public class MainActivity extends ActionBarActivity {
                 errorFragment.show(
                         getSupportFragmentManager(),
                         "Geofence Detection");
-            }*/
+            }
         	return false;
         }
     }
-
 }
