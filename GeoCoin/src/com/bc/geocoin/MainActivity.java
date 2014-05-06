@@ -13,7 +13,10 @@ import com.bc.geocoin.db.*;
 import com.bc.geocoin.sync.*;
 import com.bc.geocoin.util.ZipUtil;
 import com.bc.geocoin.fragments.*;
+import com.bc.geocoin.geofence.GeofenceStore;
 import com.bc.geocoin.R;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
@@ -21,6 +24,10 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.Fragment;
+import android.app.Activity;
+import android.app.Dialog;
+//import android.app.DialogFragment;
+import android.support.v4.app.DialogFragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -37,21 +44,57 @@ import android.widget.ListView;
 
 public class MainActivity extends ActionBarActivity {
 
-	private final String PREFS_NAME = "MyPrefsFile";
+    // Global constants
+    /*
+     * Define a request code to send to Google Play services
+     * This code is returned in Activity.onActivityResult
+     */
+    private final static int
+            CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
+	private final static String PREFS_NAME = "MyPrefsFile";
+	
+	/*
+     * Use to set an expiration time for a geofence. After this amount
+     * of time Location Services will stop tracking the geofence.
+     */
+    private static final long SECONDS_PER_HOUR = 60;
+    private static final long MILLISECONDS_PER_SECOND = 1000;
+    private static final long GEOFENCE_EXPIRATION_IN_HOURS = 12;
+    private static final long GEOFENCE_EXPIRATION_TIME =
+            GEOFENCE_EXPIRATION_IN_HOURS *
+            SECONDS_PER_HOUR *
+            MILLISECONDS_PER_SECOND;
+	
 	private SharedPreferences settings;
 	private ActionsContentView viewActionsContentView;
 	private GoogleMap map;
-	private IDbManager dbManager;
+	private GeofenceStore storage;
 	private BroadcastReceiver dataReceiver;
 	private JsonParser jsonParser;
 	private Map<String, Object> locationMap;
 	
     @Override
+    protected void onPause() {
+      super.onPause();
+      unregisterReceiver(dataReceiver);
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setUpMapIfNeeded();
+        //registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
+    }
+    
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         
-        Thread.currentThread().setContextClassLoader(new ClassLoader() {
+        /*
+         * debug classLoader errors
+         * 
+         * Thread.currentThread().setContextClassLoader(new ClassLoader() {
             @Override
             public Enumeration<URL> getResources(String resName) throws IOException {
                 Log.i("Debug", "Stack trace of who uses " +
@@ -59,7 +102,7 @@ public class MainActivity extends ActionBarActivity {
                         "getResources(String resName):", new Exception());
                 return super.getResources(resName);
             }
-        });
+        });*/
         
         settings = getSharedPreferences(PREFS_NAME, 0);
               
@@ -117,11 +160,15 @@ public class MainActivity extends ActionBarActivity {
     	new Thread(new Runnable() {
     	    public void run() {
     	    	locationMap = jsonParser.parseJSON(json);
-    	    	
+    	    	int counter = 0;
     	    	for(Map.Entry<String, Object> entry : locationMap.entrySet()){
     				Log.d("args", entry.toString());
     				Log.d("LOCATIONMAP", locationMap.toString());
     				
+    				
+    				//stop at 30 locations for test purposes
+    				if(counter>30) return;
+    				counter++;
     				
     				// convert object to map construct
     				Map<String, ?> newMap = jsonParser.parseRecord(entry.getValue());
@@ -136,16 +183,14 @@ public class MainActivity extends ActionBarActivity {
     	    }	
    
     	 }).start();
-    	
-    	
     }
     
 	/**
 	 * Setup new or retrieve existing db
 	 */
     private void setUpDb() {
-    	dbManager = new DbManager(this.getBaseContext());
-    	dbManager.createDb();
+    	storage = new GeofenceStore(this.getBaseContext());
+    	storage.initialiseDb();
 	}
     
     /**
@@ -239,17 +284,95 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
     
-    @Override
-    protected void onPause() {
-      super.onPause();
-      unregisterReceiver(dataReceiver);
+    /**
+     *  Define a DialogFragment that displays the error dialog
+     */
+    public static class ErrorDialogFragment extends DialogFragment {
+        // Global field to contain the error dialog
+        private Dialog mDialog;
+        
+        // Default constructor. Sets the dialog field to null
+        public ErrorDialogFragment() {
+            super();
+            mDialog = null;
+        }
+        
+        // Set the dialog to display
+        public void setDialog(Dialog dialog) {
+            mDialog = dialog;
+        }
+        
+        // Return a Dialog to the DialogFragment.
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+            return mDialog;
+        }      
     }
     
-    @Override
-    protected void onResume() {
-        super.onResume();
-        setUpMapIfNeeded();
-        //registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
+    /**
+     * Handle results returned to the FragmentActivity
+     * by Google Play services
+     */
+     @Override
+    protected void onActivityResult(
+            int requestCode, int resultCode, Intent data) {
+        // Decide what to do based on the original request code
+        switch (requestCode) {
+            case CONNECTION_FAILURE_RESOLUTION_REQUEST :
+            /*
+             * If the result code is Activity.RESULT_OK, try
+             * to connect again
+             */
+                switch (resultCode) {
+                    case Activity.RESULT_OK :
+                    /*
+                     * Try the request again
+                     */
+                    break;
+                }
+        }
+    }
+    
+     /**
+      * Check if GooglePlayServices is available
+      * @return
+      */
+    private boolean servicesConnected() {
+        // Check that Google Play services is available
+        int resultCode =
+                GooglePlayServicesUtil.
+                        isGooglePlayServicesAvailable(this);
+        // If Google Play services is available
+        if (ConnectionResult.SUCCESS == resultCode) {
+            // In debug mode, log the status
+            Log.d("Geofence Detection",
+                    "Google Play services is available.");
+            // Continue
+            return true;
+        // Google Play services was not available for some reason
+        } else {
+            // Get the error code
+            /*int errorCode = connectionResult.getErrorCode();
+            // Get the error dialog from Google Play services
+            Dialog errorDialog = GooglePlayServicesUtil.getErrorDialog(
+                    errorCode,
+                    this,
+                    CONNECTION_FAILURE_RESOLUTION_REQUEST);
+
+            // If Google Play services can provide an error dialog
+            if (errorDialog != null) {
+                // Create a new DialogFragment for the error dialog
+                ErrorDialogFragment errorFragment =
+                        new ErrorDialogFragment();
+                // Set the dialog in the DialogFragment
+                errorFragment.setDialog(errorDialog);
+                // Show the error dialog in the DialogFragment
+                errorFragment.show(
+                        getSupportFragmentManager(),
+                        "Geofence Detection");
+            }*/
+        	return false;
+        }
     }
 
 }
