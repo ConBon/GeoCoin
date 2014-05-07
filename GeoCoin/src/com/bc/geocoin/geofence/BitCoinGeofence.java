@@ -62,6 +62,9 @@ public class BitCoinGeofence {
         this.mIcon = icon;
     }
     // Instance field getters
+    public String getId() {
+        return mId;
+    }
     public double getLatitude() {
         return mLatitude;
     }

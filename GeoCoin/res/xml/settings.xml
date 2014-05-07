@@ -1,18 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" 
+    			  xmlns:robobunny="http://robobunny.com"
     			  android:persistent="true">
 
     
-    <PreferenceCategory android:title="General" >
-        <CheckBoxPreference
-            android:key="checkbox"
-            android:title="Something checkable" />
+    <PreferenceCategory 
+        android:title="General" 
+        android:layout="@layout/settings">
+
+        <com.robobunny.SeekBarPreference
+            android:key="GEOFENCE_RADIUS"
+            android:title="Radius"
+            android:summary="@string/radius_setting_summary"
+            android:defaultValue="200"
+            android:max="1000"
+            robobunny:min="30"
+            robobunny:unitsLeft=""
+            robobunny:unitsRight="meters">
+            
+        </com.robobunny.SeekBarPreference>
 
         <EditTextPreference
             android:key="edittext"
-            android:title="Fill text" />
+            android:title="Fill text"/>
     </PreferenceCategory>
-    <PreferenceCategory android:title="Advanced" >
+    <PreferenceCategory 
+        android:title="Advanced" >
         <EditTextPreference
             android:key="advanced:edittext"
             android:title="Say hello" />
