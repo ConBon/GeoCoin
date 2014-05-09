@@ -46,14 +46,12 @@ public class JsonParser {
 	 * @param obj
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public Map<String, Object> parseRecord(Object obj){		
 		GsonBuilder builder = new GsonBuilder();
 		Map<String, Object> gsonMap = new HashMap<String, Object>();
-		for(Entry<String, Object> result : map.entrySet()){
-		    String str = result.getValue().toString();
-			gsonMap = (Map<String, Object>) builder.create().fromJson(str, Object.class);
-			return gsonMap;
-		}	
+	    String str = obj.toString();//result.getValue().toString();
+		gsonMap = (Map<String, Object>) builder.create().fromJson(str, Object.class);
 		return gsonMap;
 	}
 }

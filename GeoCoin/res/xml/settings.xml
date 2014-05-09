@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" 
     			  xmlns:robobunny="http://robobunny.com"
-    			  android:persistent="true">
+    			  android:persistent="true"
+    			  android:layout="@layout/settings"
+    			  android:widgetLayout="@layout/settings">
 
     
     <PreferenceCategory 
-        android:title="General" 
-        android:layout="@layout/settings">
-
-        <com.robobunny.SeekBarPreference
+        android:title="Settings" >
+        <com.bc.geocoin.seekbar.SeekBarPreference
             android:key="GEOFENCE_RADIUS"
             android:title="Radius"
             android:summary="@string/radius_setting_summary"
@@ -17,18 +17,14 @@
             robobunny:min="30"
             robobunny:unitsLeft=""
             robobunny:unitsRight="meters">
-            
-        </com.robobunny.SeekBarPreference>
-
-        <EditTextPreference
-            android:key="edittext"
-            android:title="Fill text"/>
+		</com.bc.geocoin.seekbar.SeekBarPreference>
     </PreferenceCategory>
+    
     <PreferenceCategory 
         android:title="Advanced" >
-        <EditTextPreference
-            android:key="advanced:edittext"
-            android:title="Say hello" />
+        <CheckBoxPreference
+            android:key="advanced:sounds"
+            android:title="Notification Sounds" />
     </PreferenceCategory>
 
 </PreferenceScreen>

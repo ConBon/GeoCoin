@@ -82,8 +82,6 @@ public class MainActivity extends ActionBarActivity implements
 	private SharedPreferences settings;
 	private ActionsContentView viewActionsContentView;
 	private GoogleMap map;
-	private GeofenceStore storage;
-	private BroadcastReceiver dataReceiver;
 	private JsonParser jsonParser;
 	private Map<String, Object> locationMap;
 	
@@ -101,6 +99,34 @@ public class MainActivity extends ActionBarActivity implements
     private REQUEST_TYPE requestType;
     // Flag that indicates if a request is underway.
     private boolean inProgress;
+    
+    BitCoinGeofence bcGeofence;
+    String docId;
+    double lat;
+	double lon;
+	String name;
+    
+	 /**
+     * Receiver for DataPullerService
+     */
+    private BroadcastReceiver dataReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) { 
+        	Log.d("MainActivity", "onReceive broadcast");
+        	int i = 0;
+        	Bundle bundle = intent.getExtras();    
+        	if(bundle != null){
+        		try {
+        			if(i<1){
+        				splitJson(ZipUtil.decompress((byte[])bundle.get("json")));
+        				i++;
+        			}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}            		
+        	}
+        }
+    };        
 	
     @Override
     protected void onPause() {
@@ -112,12 +138,13 @@ public class MainActivity extends ActionBarActivity implements
     protected void onResume() {
         super.onResume();
         setUpMapIfNeeded();
-        //registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
+        registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
     }
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //registerReceiver(dataReceiver, new IntentFilter(DataPullerService.ACTION));
         setContentView(R.layout.activity_main);
         
         /*
@@ -164,22 +191,7 @@ public class MainActivity extends ActionBarActivity implements
         	
         setUpDb();	
         
-        /**
-         * Receiver for DataPullerService
-         */
-        dataReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {        	
-            	Bundle bundle = intent.getExtras();    
-            	if(bundle != null){
-            		try {
-						splitJson(ZipUtil.decompress((byte[])bundle.get("json")));
-					} catch (Exception e) {
-						e.printStackTrace();
-					}            		
-            	}
-            }
-        };        
+        
         syncFirstTime();   
     }
     
@@ -188,47 +200,60 @@ public class MainActivity extends ActionBarActivity implements
      * @param json
      */
     public void splitJson(final String json){
+    	Log.d("MainActivity", "splitJson");
     	jsonParser = new JsonParser();
     	 
     	new Thread(new Runnable() {
     	    public void run() {
     	    	locationMap = jsonParser.parseJSON(json);
     	    	int counter = 0;
-    	    	
-    	    	/*
-    	    	 * Adding my house/university building as test data
-    	    	 */
-    	    	BitCoinGeofence bcGeofence = new BitCoinGeofence(
-    		            Integer.toString(6434345), 54.5771161, -5.9435748, 10, 
-    		            GEOFENCE_EXPIRATION_TIME,
-    		            // This geofence records only entry transitions
-    		            Geofence.GEOFENCE_TRANSITION_ENTER,
-    		            "CONALS LOVE SHACK", "Belfast", "27 Belvedere Manor", "www.conalmclaughlin.com", "07854245820", "bitcoin");
-    		    // Store this flat version
-    		    String docId = geofenceStorage.saveGeofence(bcGeofence);
-    		    
-    		    geofenceList.add(bcGeofence.toGeofence(docId));
-    		    
-    		    //place a marker on the map
-    		    setUpMap(54.5771161, -5.9435748, "CONALS LOVE SHACK");
-    		    
-    		    
+		    
     	    	for(Map.Entry<String, Object> entry : locationMap.entrySet()){
     				Log.d("args", entry.toString());
-    				Log.d("LOCATIONMAP", locationMap.toString());
+		
     				
-    				
-    				//stop at 30 locations for test purposes
-    				if(counter>10){
-    					addGeofences();
-    					return;
-    				}
+    				//control number of locations created for test purposes
+    				if(counter>10){return;}
     				counter++;
     				
-    				// convert object to map construct
+    				/**
+	    	    	 * Test Data for geofences
+	    	    	 */
+    				 new Thread(new Runnable() {
+    			    	    public void run() {
+    			    	    	
+    			    	    	Log.d("MainActivity", "Create test geofence object");
+    			    	    	BitCoinGeofence BCBGeofence = new BitCoinGeofence(
+    			    	    			54.581707, -5.937531, 200, 
+    			    		            GEOFENCE_EXPIRATION_TIME,
+    			    		            // This geofence records only entry transitions
+    			    		            Geofence.GEOFENCE_TRANSITION_ENTER,
+    			    		            "Bernard Crossland Building", "Belfast", "Malone Rd", "http://www.qub.ac.uk/", "02890000000", "bitcoin");
+    			    	    	String BCBid = geofenceStorage.saveGeofence(BCBGeofence);
+    			    	    	BCBGeofence.setId(BCBid);
+    			    	    	geofenceList.add(BCBGeofence.toGeofence(BCBid));
+    			    	    	
+    			    	    	runOnUiThread(new Runnable() {
+
+    			                    @Override
+    			                    public void run() {
+    			                    	/*
+    			                    	 * Add test marker to map
+    			                    	 */
+    			                    	setUpMap(54.581707, -5.937531, "Bernard Crossland Building");
+    			                    	
+    			            		    Log.d("MainActivity", "runOnUiThread: setUpMap");
+    			                    }
+    			                });
+    			    	    }
+    			    	}).start();    
+    			    	    	
+    			    // convert object to map construct
     				Map<String, Object> newMap = jsonParser.parseRecord(entry.getValue());
     				createGeofence(newMap);
+    				newMap.clear();
     	    	}
+    	    	addGeofences();
     	    }	
    
     	 }).start();
@@ -238,8 +263,8 @@ public class MainActivity extends ActionBarActivity implements
 	 * Setup new or retrieve existing db
 	 */
     private void setUpDb() {
-    	storage = new GeofenceStore(this.getBaseContext());
-    	storage.initialiseDb();
+    	geofenceStorage = new GeofenceStore(this.getBaseContext());
+    	geofenceStorage.initialiseDb();
 	}
     
     /**
@@ -258,6 +283,7 @@ public class MainActivity extends ActionBarActivity implements
      * Start service to pull data from url in background
      */
     private void sync(){
+    	Log.d("Sync", "Creating intent and starting service");
     	Intent intent = new Intent(this, DataPullerService.class);
 		startService(intent);
     }
@@ -270,11 +296,10 @@ public class MainActivity extends ActionBarActivity implements
         /*
          * Create an internal object to store the data.
          */
-    	String id ="";
-    	double lat = 0;
-    	double lon = 0;
+    	lat = 0;
+    	lon = 0;
     	float radius = settings.getFloat("GEOFENCE_RADIUS", 200);
-    	String name ="";
+    	name ="";
     	String city ="";
     	String address ="";
     	String web ="";
@@ -283,9 +308,6 @@ public class MainActivity extends ActionBarActivity implements
     	
     	for(Map.Entry<String, Object> property : data.entrySet()){
     		switch(property.getKey()){
-    		case "id":
-    			id = (String) property.getValue();
-    			break;
     		case "lat":
     			lat = (Double) property.getValue();
     			break;
@@ -310,19 +332,37 @@ public class MainActivity extends ActionBarActivity implements
     		default: break;  				
     		}
     	}
-    	BitCoinGeofence bcGeofence = new BitCoinGeofence(
-	            id, lat, lon, radius, 
+    	bcGeofence = new BitCoinGeofence(
+	            lat, lon, radius, 
 	            GEOFENCE_EXPIRATION_TIME,
 	            // This geofence records only entry transitions
 	            Geofence.GEOFENCE_TRANSITION_ENTER,
 	            name, city, address, web, phone, icon);
-	    // Store this flat version
-	    String docId = geofenceStorage.saveGeofence(bcGeofence);
-	    
-	    geofenceList.add(bcGeofence.toGeofence(docId));
-	    
-	    //place a marker on the map
-	    setUpMap(lat, lon, name);
+
+	    new Thread(new Runnable() {
+    	    public void run() {	
+    	    	
+    	    	// Store this flat version
+    		    docId = geofenceStorage.saveGeofence(bcGeofence);
+    		    bcGeofence.setId(docId);
+    		    geofenceList.add(bcGeofence.toGeofence(docId));
+    		    Log.d("MainActivity", "Inside new thread: to create and store geofence");
+    		    
+    		    runOnUiThread(new Runnable() {
+
+                    @Override
+                    public void run() {
+                    	/*
+                    	 * Add test marker to map
+                    	 */
+                    	setUpMap(54.581707, -5.937531, "Bernard Crossland Building");
+                    	//place a marker on the map
+                    	setUpMap(lat, lon, name);
+            		    Log.d("MainActivity", "runOnUiThread: setUpMap");
+                    }
+                });
+    	    }
+    	}).start();    
     }
     
     /**
@@ -360,9 +400,6 @@ public class MainActivity extends ActionBarActivity implements
         case 2:
         	f = new AboutFragment();
         	break;
-        case 3:
-        	
-
         default:
           return;
         }
@@ -389,8 +426,7 @@ public class MainActivity extends ActionBarActivity implements
     /**
      * This is where we can add markers or lines, add listeners or move the camera. 
      */
-    private void setUpMap(double lat, double lng, String title) {
-    	
+    private void setUpMap(double lat, double lng, String title) {   	
         map.addMarker(new MarkerOptions().position(new LatLng(lat, lng)).title(title));
         Log.d("MainActivity", "Adding marker '"+title+"' to map at lat: "+lat+" long: "+lng);
     }
@@ -573,6 +609,7 @@ public class MainActivity extends ActionBarActivity implements
             inProgress = true;
             // Request a connection from the client to Location Services
             locationClient.connect();
+            Log.d("AddGeofences", "LocationClient connecting: awaiting callback");
         } else {
             /*
              * A request is already underway. You can handle
@@ -697,6 +734,7 @@ public class MainActivity extends ActionBarActivity implements
             // Send a request to add the current geofences
             locationClient.addGeofences(
                     geofenceList, transitionPendingIntent, this);
+            Log.d("OnConnected", "Request to add geofences sent");
             break;
         case REMOVE_INTENT:
         	

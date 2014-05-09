@@ -21,6 +21,7 @@ public class DataPullerService extends IntentService{
     
 	// put in config? 
 	// coinmap.org url
+	private final String TAG = "DATAPULLERSERVICE";
 	private final String urlString = "http://www.coinmap.org/data/data-overpass-bitcoin.json";
 	private URL url;
 	private String inputLine;
@@ -34,6 +35,7 @@ public class DataPullerService extends IntentService{
     
     @Override
 	protected void onHandleIntent(Intent intent) {
+    	Log.d(TAG, "onHandleIntent");
 		try {
 			url = new URL(urlString);
 		} catch (MalformedURLException e) {

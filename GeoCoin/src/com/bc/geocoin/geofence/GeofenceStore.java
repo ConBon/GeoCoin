@@ -65,6 +65,7 @@ public class GeofenceStore {
 		try {
 			manager = new Manager(context.getFilesDir(),
 					Manager.DEFAULT_OPTIONS);
+			Log.d(TAG, "Manager initialised");
 		} catch (IOException e) {
 			Log.e(TAG, "Cannot create manager object");
 		}
@@ -78,6 +79,7 @@ public class GeofenceStore {
 		// create a new database
 		try {
 			database = manager.getDatabase(DB_NAME);
+			Log.d(TAG,  "Database initialised");
 		} catch (CouchbaseLiteException e) {
 			Log.e(TAG, "Cannot retrieve database");
 			return false;

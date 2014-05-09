@@ -7,7 +7,7 @@ import com.google.android.gms.location.Geofence;
  */
 public class BitCoinGeofence {
         // Instance variables
-        private final String mId;
+        private String mId;
         private final double mLatitude;
         private final double mLongitude;
         private final float mRadius;
@@ -35,7 +35,6 @@ public class BitCoinGeofence {
      * @param icon type of the geofence target
      */
     public BitCoinGeofence(
-            String geofenceId,
             double latitude,
             double longitude,
             float radius,
@@ -48,7 +47,34 @@ public class BitCoinGeofence {
             String phone,
             String icon) {
         // Set the instance fields from the constructor
-        this.mId = geofenceId;
+        this.mLatitude = latitude;
+        this.mLongitude = longitude;
+        this.mRadius = radius;
+        this.mExpirationDuration = expiration;
+        this.mTransitionType = transition;
+        this.mName = name;
+        this.mCity = city;
+        this.mAddress = address;
+        this.mWeb = web;
+        this.mPhone = phone;
+        this.mIcon = icon;
+    }
+    //Overloaded contructor for inclusion of ID
+    public BitCoinGeofence(
+    		String id,
+            double latitude,
+            double longitude,
+            float radius,
+            long expiration,
+            int transition,
+            String name,
+            String city,
+            String address,
+            String web,
+            String phone,
+            String icon) {
+        // Set the instance fields from the constructor
+    	this.mId = id;
         this.mLatitude = latitude;
         this.mLongitude = longitude;
         this.mRadius = radius;
@@ -62,6 +88,9 @@ public class BitCoinGeofence {
         this.mIcon = icon;
     }
     // Instance field getters
+    public void setId(String id){
+    	this.mId = id;
+    }
     public String getId() {
         return mId;
     }

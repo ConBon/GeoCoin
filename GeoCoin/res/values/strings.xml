@@ -6,4 +6,8 @@
     <string name="action_refresh">Refresh</string>
     <string name="radius_setting_summary">At what distance do you want to be notified of Bitcoin services?</string>
     <string name="coinmap_url">http://www.coinmap.org/data/data-overpass-bitcoin.json</string>
+    <string name="about_summary">Bitcoin is an innovative payment network and a new kind of money. 
+        GeoCoin is aiming to promote the Bitcoin network by giving location details of any businesses willing to accept Bitcoin as payment!</string>
+    <string name="about_actionscontentview">Steven Rudenko for his sliding menu bar.</string>
+    <string name="about_stevenrudenko">- https://github.com/StevenRudenko/ActionsContentView</string>
 </resources>

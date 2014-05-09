@@ -1,1 +1,6 @@
 Android application to notify users when they are within a close proximity to a Bitcoin accepting business.
+
+
+-Install application on any device running Android Gingerbread or above. This is the minimum API target in the manifest but app has only been tested on KitKat.
+-Bernard Crossland Building has been added as geofence test data with a radius of 200m.
+-Including third party packages in case for whatever reason the application won't build without them alongside in the workspace.
